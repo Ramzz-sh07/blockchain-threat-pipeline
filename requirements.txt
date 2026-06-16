@@ -1,33 +1,33 @@
 # Blockchain data
-web3==6.15.1
-bitcoin==1.1.42
-requests==2.31.0
+web3>=6.15.0
+bitcoin>=1.1.42
+requests>=2.31.0
 
 # Data processing
-pandas==2.2.1
-numpy==1.26.4
-networkx==3.3
+pandas>=2.2.0
+numpy>=1.26.0
+networkx>=3.3
 
 # Machine learning
-scikit-learn==1.4.2
-joblib==1.4.0
+scikit-learn>=1.4.0
+joblib>=1.4.0
 
 # API
-fastapi==0.111.0
-uvicorn==0.29.0
-pydantic==2.7.1
+fastapi>=0.111.0
+uvicorn>=0.29.0
+pydantic>=2.7.0
 
 # Database
-sqlalchemy==2.0.30
-psycopg2-binary==2.9.9
+sqlalchemy>=2.0.30
+psycopg2-binary>=2.9.9
 
 # Streaming
-kafka-python==2.0.2
+kafka-python>=2.0.2
 
 # Dashboard
-streamlit==1.35.0
-plotly==5.22.0
+streamlit>=1.35.0
+plotly>=5.22.0
 
 # Dev / testing
-pytest==8.2.0
-python-dotenv==1.0.1
+pytest>=8.2.0
+python-dotenv>=1.0.1
