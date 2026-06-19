@@ -1,14 +1,8 @@
-import pandas as pd
 from fastapi import APIRouter, HTTPException
 from api.schemas import WalletRiskResponse, HealthResponse
-from features.graph.graph_features      import extract_graph_features, build_transaction_graph
-from detection.models.risk_scorer       import score
+from db.mongo import get_wallet, get_flagged_wallets, count_wallets
 
 router = APIRouter()
-
-# In production this would query your DB / feature store.
-# For the portfolio demo, we use a lightweight in-memory lookup.
-_score_cache: dict[str, dict] = {}
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -18,21 +12,39 @@ def health():
 
 @router.get("/wallet/{address}", response_model=WalletRiskResponse)
 def get_wallet_risk(address: str):
-    """Return the latest risk score for a wallet address."""
-    if address in _score_cache:
-        return _score_cache[address]
+    """Return the latest risk score for a wallet address, from MongoDB."""
+    doc = get_wallet(address)
+    if doc:
+        return {
+            "wallet": doc["wallet"],
+            "risk_score": doc.get("risk_score", 0.0),
+            "rule_score": 0.0,
+            "final_score": doc.get("risk_score", 0.0),
+            "flagged": doc.get("flagged", False),
+            "triggered_rules": "",
+        }
     raise HTTPException(status_code=404, detail=f"No data found for wallet {address}")
 
 
 @router.get("/flagged")
-def get_flagged_wallets(limit: int = 50):
-    """Return the top N highest-scoring flagged wallets."""
-    flagged = [v for v in _score_cache.values() if v.get("flagged")]
-    flagged.sort(key=lambda x: x["final_score"], reverse=True)
-    return {"count": len(flagged), "wallets": flagged[:limit]}
+def get_flagged(limit: int = 50):
+    """Return the top N highest-risk flagged wallets, from MongoDB."""
+    docs = get_flagged_wallets(limit=limit)
+    wallets = [
+        {
+            "wallet": d["wallet"],
+            "risk_score": d.get("risk_score", 0.0),
+            "rule_score": 0.0,
+            "final_score": d.get("risk_score", 0.0),
+            "flagged": d.get("flagged", False),
+            "triggered_rules": "",
+        }
+        for d in docs
+    ]
+    return {"count": len(wallets), "wallets": wallets}
 
 
-def update_cache(scored_df: pd.DataFrame):
-    """Called by the pipeline to keep the API cache fresh."""
-    for _, row in scored_df.iterrows():
-        _score_cache[row["wallet"]] = row.to_dict()
+@router.get("/stats")
+def get_stats():
+    """Total wallets tracked in the database."""
+    return {"total_wallets": count_wallets()}

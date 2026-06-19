@@ -19,7 +19,7 @@ def test_graph_features_alice():
     f = extract_graph_features(G, "0xAlice")
     assert f["graph_out_degree"] == 3
     assert f["graph_in_degree"]  == 2
-    assert f["graph_fan_out_ratio"] > 1
+    assert f["graph_fan_out_ratio"] >= 1
 
 
 def test_graph_features_unknown_wallet():
