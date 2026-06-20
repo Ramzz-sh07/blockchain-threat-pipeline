@@ -22,8 +22,8 @@ def get_producer() -> KafkaProducer:
     return KafkaProducer(
         bootstrap_servers=KAFKA_BOOTSTRAP,
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        api_version=(2, 5, 0),
     )
-
 
 def get_web3() -> Web3:
     """Create a Web3 instance connected via HTTP (works on free tier)."""

@@ -9,11 +9,13 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import joblib
-from db.mongo import upsert_wallets, create_indexes
 from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
+
+from detection.rules.heuristics import apply_rules
+from db.mongo import upsert_wallets, create_indexes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -133,14 +135,27 @@ def main():
     os.makedirs(PROC_DIR, exist_ok=True)
     out = feat_df[["txId", "class"]].copy()
     out.columns = ["wallet", "true_class"]
+    out["wallet"] = out["wallet"].astype(str)
     out["risk_score"] = np.round(risk_scores, 2)
     out["flagged"]    = out["risk_score"] >= 70
+
+    logger.info("Classifying wallets into threat categories...")
+    feat_df_for_rules = feat_df.copy()
+    feat_df_for_rules["wallet"] = feat_df_for_rules["txId"].astype(str)
+
+    ml_scores_map = dict(zip(out["wallet"], out["risk_score"]))
+    categorized = apply_rules(feat_df_for_rules, ml_scores=ml_scores_map)
+
+    out = out.merge(
+        categorized[["wallet", "dominant_category", "rule_score", "triggered_rules"]],
+        on="wallet", how="left"
+    )
+
     out.to_csv(os.path.join(PROC_DIR, "wallet_scores.csv"), index=False)
     logger.info("Saved %d scored wallets to data/processed/wallet_scores.csv", len(out))
     logger.info("Flagged: %d wallets (risk_score >= 70)", out["flagged"].sum())
+    logger.info("Category breakdown:\n%s", out["dominant_category"].value_counts())
 
-    # Write to MongoDB
-    out["wallet"] = out["wallet"].astype(str)
     records = out.to_dict("records")
     logger.info("Writing %d wallet records to MongoDB...", len(records))
     create_indexes()
