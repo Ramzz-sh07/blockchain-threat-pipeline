@@ -29,6 +29,7 @@ from features.wallet.wallet_profile      import extract_batch as wallet_batch
 from detection.rules.heuristics          import apply_rules
 from db.mongo import upsert_wallets, create_indexes
 from config.settings import KAFKA_BOOTSTRAP, KAFKA_TOPIC_RAW, KAFKA_TOPIC_SCORED, MODEL_PATH
+from db.alerts import trigger_alert
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,11 @@ def run():
                     producer.send(KAFKA_TOPIC_SCORED, value=row.to_dict())
                     logger.warning("FLAGGED wallet %s — category=%s, score=%.1f",
                                    row["wallet"], row["dominant_category"], row["rule_score"])
+                    trigger_alert(
+                        wallet=row["wallet"],
+                        category=row["dominant_category"] or "unknown",
+                        score=row["rule_score"],
+                    )
 
                 logger.info("Batch processed: %d txs, %d wallets, %d flagged, written to MongoDB",
                             len(buffer), len(scored), len(flagged))
